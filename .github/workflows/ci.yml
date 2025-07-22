@@ -44,6 +44,12 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
+      
+      - name: Install native dependencies
+        run: npm rebuild oxc-parser || yarn add oxc-parser --force
+
+      - name: Clean pnpm store
+        run: pnpm store prune
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
