@@ -7,6 +7,9 @@ on:
     workflows: ["Release"]
     types: [completed]
 
+permissions:
+  contents: write
+
 # Make the environment‐scoped NPM_TOKEN available as NODE_AUTH_TOKEN
 env:
   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
