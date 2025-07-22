@@ -38,7 +38,7 @@
     "@playwright/test": "^1.49.1",
     "changelogen": "^0.6.2",
     "eslint": "^9.31.0",
-    "nuxt": "^3.17.7",
+    "nuxt": "^4.0.1",
     "unbuild": "^3.5.0",
     "vitest": "^3.2.4"
   },
