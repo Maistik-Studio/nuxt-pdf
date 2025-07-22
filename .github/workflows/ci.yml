@@ -20,6 +20,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -34,7 +37,10 @@ jobs:
       
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
+      - name: Rebuild native modules
+        run: pnpm rebuild
+
       - name: Lint
         run: pnpm lint
       
