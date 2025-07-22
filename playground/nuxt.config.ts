@@ -2,8 +2,8 @@ export default defineNuxtConfig({
   modules: ['../src/module'],
   devtools: { enabled: true },
   pdf: {
-    provider: 'gotenberg', // Using puppeteer for local development
-    // provider: 'puppeteer', // Using puppeteer for local development
+    // provider: 'gotenberg', // Using puppeteer for local development
+    provider: 'puppeteer', // Using puppeteer for local development
     components: ['pdf'],
     sharedComponents: ['pdf/partials'],
     enableI18n: true,

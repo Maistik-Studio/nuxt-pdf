@@ -152,6 +152,7 @@ lib/
 
 # Test coverage
 coverage/
+test-results/
 
 # Temporary files
 tmp/
@@ -170,6 +171,7 @@ temp/
 types/generated/
 
 # Playground specific
+playwright-report/
 playground/.nuxt/
 playground/.output/
 playground/dist/
