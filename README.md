@@ -376,6 +376,6 @@ Contributions are welcome! Please read our contributing guidelines and submit pu
 
 ## Support
 
-- 📖 [Documentation](https://github.com/maistik/nuxt-pdf)
-- 🐛 [Issue Tracker](https://github.com/maistik/nuxt-pdf/issues)
-- 💬 [Discussions](https://github.com/maistik/nuxt-pdf/discussions)
+- 📖 [Documentation](https://github.com/Maistik-Studio/nuxt-pdf)
+- 🐛 [Issue Tracker](https://github.com/Maistik-Studio/nuxt-pdf/issues)
+- 💬 [Discussions](https://github.com/Maistik-Studio/nuxt-pdf/discussions)
