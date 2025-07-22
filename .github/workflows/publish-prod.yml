@@ -3,7 +3,9 @@ name: Publish Production
 on:
   push:
     branches: [main]
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
 
 # Make the environment‐scoped NPM_TOKEN available as NODE_AUTH_TOKEN
 env:
@@ -23,6 +25,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.3
 
       - name: Setup Node.js & pnpm
         uses: actions/setup-node@v4
