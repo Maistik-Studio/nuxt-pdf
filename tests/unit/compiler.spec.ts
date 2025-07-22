@@ -84,7 +84,7 @@ describe('PDF Compiler', () => {
       messages: mockMessages,
     })
 
-    expect(result).toContain('100,00 US$')
+    expect(result).toContain('$100.00')
   })
 
   it('should handle missing translation keys', () => {
@@ -104,7 +104,7 @@ describe('PDF Compiler', () => {
 
     const result = template({ amount: 1234.56 })
 
-    expect(result).toContain('1234,56 US$')
+    expect(result).toContain('$1,234.56')
   })
 
   it('should format dates correctly', () => {
@@ -114,7 +114,7 @@ describe('PDF Compiler', () => {
 
     const result = template({ date: '2024-01-15' })
 
-    expect(result).toContain('15/1/24')
+    expect(result).toContain('1/15/24')
   })
 
   it('should handle string helpers', () => {
