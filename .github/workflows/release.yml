@@ -1,8 +1,11 @@
 name: Release
 
 on:
+  # 1) direct pushes to main
   push:
     branches: [main]
+
+  # 2) manual dispatch when you need it
   workflow_dispatch:
     inputs:
       release_type:
@@ -10,138 +13,136 @@ on:
         required: true
         default: 'patch'
         type: choice
-        options:
-          - patch
-          - minor
-          - major
-          - prerelease
+        options: [patch, minor, major, prerelease]
+
+  # 3) automatic when your "CI" workflow succeeds on main
   workflow_run:
     workflows: ["CI"]
     types: [completed]
 
 permissions:
-  contents: write
+  contents: write   # allow checkout/push/tag
+  id-token: write   # if you ever want to sign packages
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
-    
+
+    # pull in your prod‐scoped NPM_TOKEN (and enforce any approvals you’ve set there)
+    environment:
+      name: prod
+
+    # only run when:
+    # • a push/main without “[skip ci]” in the commit, OR
+    # • a manual dispatch, OR
+    # • a workflow_run from “CI” that passed on main
+    if: >-
+      (github.event_name == 'push' &&
+         !contains(github.event.head_commit.message, '[skip ci]')
+      ) ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+         github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.head_branch == 'main'
+      )
+
+    # make NPM_TOKEN from your prod environment available
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
     steps:
-      - name: Checkout
+      - name: Checkout full history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9.15.3
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'pnpm'
+          node-version: 22              # pick ≥20.9.0 or 22 to satisfy oxc‑parser
+          cache: pnpm
           registry-url: 'https://registry.npmjs.org'
-      
+          always-auth: true            # let setup-node write .npmrc for you
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
       - name: Rebuild native modules
         run: pnpm rebuild
-      
-      - name: Configure Git
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-      
-      - name: Run tests
+
+      - name: Lint & unit tests
         run: |
           pnpm lint
           pnpm test:unit
-      
+
       - name: Build
         run: pnpm build
-      
+
       - name: Determine release type
-        id: release_type
+        id: determine
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "type=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
           else
-            # Auto-determine release type based on commit messages
-            if git log --format=%B -n 1 ${{ github.sha }} | grep -q "BREAKING CHANGE\|!:"; then
-              echo "type=major" >> $GITHUB_OUTPUT
-            elif git log --format=%B -n 1 ${{ github.sha }} | grep -q "^feat"; then
-              echo "type=minor" >> $GITHUB_OUTPUT
-            else
-              echo "type=patch" >> $GITHUB_OUTPUT
+            BODY=$(git log -1 --pretty=%B)
+            if   echo "$BODY" | grep -qE "BREAKING CHANGE|!:"; then echo "type=major" >> $GITHUB_OUTPUT
+            elif echo "$BODY" | grep -qE "^feat";                then echo "type=minor" >> $GITHUB_OUTPUT
+            else  echo "type=patch"  >> $GITHUB_OUTPUT
             fi
           fi
-      
-      - name: Bump version
-        id: version
+
+      - name: Bump version (no tag)
+        id: bump
         run: |
-          RELEASE_TYPE="${{ steps.release_type.outputs.type }}"
-          NEW_VERSION=$(npm version $RELEASE_TYPE --no-git-tag-version)
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "version_number=${NEW_VERSION#v}" >> $GITHUB_OUTPUT
-      
+          NEW=$(npm version "${{ steps.determine.outputs.type }}" --no-git-tag-version)
+          echo "new_version=$NEW"           >> $GITHUB_OUTPUT
+          echo "version_number=${NEW#v}"    >> $GITHUB_OUTPUT
+
       - name: Update changelog
+        run: pnpm exec changelogen --release --push=false
+
+      - name: Commit & tag
         run: |
-          pnpm exec changelogen --release --push=false
-      
-      - name: Commit changes
-        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "chore(release): ${{ steps.version.outputs.new_version }} [skip ci]" || exit 0
-      
-      - name: Create Git tag
-        run: |
-          git tag ${{ steps.version.outputs.new_version }}
-      
-      - name: Push changes
-        run: |
-          git push origin main
-          git push origin ${{ steps.version.outputs.new_version }}
-      
+          git commit -m "chore(release): v${{ steps.bump.outputs.version_number }} [skip ci]" || echo "No changes to commit"
+          git tag v${{ steps.bump.outputs.version_number }}
+          git push origin main --follow-tags
+
       - name: Create GitHub Release
         uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.version.outputs.new_version }}
-          release_name: Release ${{ steps.version.outputs.new_version }}
+          tag_name: ${{ steps.bump.outputs.new_version }}
+          release_name: Release ${{ steps.bump.outputs.new_version }}
           body: |
             ## Changes
-            
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md).
             
             ## Installation
-            
             ```bash
-            npm install @maistik/nuxt-pdf@${{ steps.version.outputs.version_number }}
+            npm install @maistik/nuxt-pdf@${{ steps.bump.outputs.version_number }}
             ```
           draft: false
-          prerelease: ${{ contains(steps.version.outputs.new_version, 'alpha') || contains(steps.version.outputs.new_version, 'beta') || contains(steps.version.outputs.new_version, 'rc') }}
-      
-      - name: Publish to npm
-        run: pnpm publish --access public --no-git-checks
+          prerelease: ${{ contains(steps.bump.outputs.new_version, 'alpha') || contains(steps.bump.outputs.new_version, 'beta') || contains(steps.bump.outputs.new_version, 'rc') }}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      
-      - name: Create release summary
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure npm auth
+        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+
+      - name: Publish to npm (latest)
+        run: pnpm publish --access public --no-git-checks
+
+      - name: Release summary
         run: |
-          echo "## 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: ${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Type**: ${{ steps.release_type.outputs.type }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Published**: ✅ Successfully published to npm" >> $GITHUB_STEP_SUMMARY
-          echo "- **GitHub Release**: ✅ Created" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Installation" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "npm install @maistik/nuxt-pdf@${{ steps.version.outputs.version_number }}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Released v${{ steps.bump.outputs.version_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Type**: ${{ steps.determine.outputs.type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **npm**: ✅ latest" >> $GITHUB_STEP_SUMMARY
+          echo "- **GitHub Release**: ✅ created" >> $GITHUB_STEP_SUMMARY
