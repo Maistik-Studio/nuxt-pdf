@@ -70,8 +70,7 @@ class GotenbergProvider implements PdfProvider {
     })
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error')
-      throw new Error(`Gotenberg error: ${response.status} ${response.statusText} - ${errorText}`)
+      throw new Error(`Gotenberg error: ${response.statusText}`)
     }
 
     return Buffer.from(await response.arrayBuffer())

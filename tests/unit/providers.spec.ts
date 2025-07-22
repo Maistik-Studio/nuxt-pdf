@@ -1,57 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-// Mock the providers for testing
-interface PdfProvider {
-  generatePdf(html: string, options: any): Promise<Buffer>
-}
-
-function createPdfProvider(providerType: string, config: any): PdfProvider {
-  switch (providerType) {
-    case 'gotenberg':
-      return new GotenbergProvider(config.gotenberg)
-    case 'browserless':
-      return new BrowserlessProvider(config.browserless)
-    default:
-      throw new Error(`Unknown PDF provider: ${providerType}`)
-  }
-}
-
-class GotenbergProvider implements PdfProvider {
-  constructor(private config: { url: string }) {}
-
-  async generatePdf(_html: string, _options: any): Promise<Buffer> {
-    const response = await fetch(`${this.config.url}/forms/chromium/convert/html`, {
-      method: 'POST',
-      body: new FormData(),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Gotenberg error: ${response.statusText}`)
-    }
-
-    return Buffer.from(await response.arrayBuffer())
-  }
-}
-
-class BrowserlessProvider implements PdfProvider {
-  constructor(private config: { url: string, apiKey: string }) {}
-
-  async generatePdf(html: string, options: any): Promise<Buffer> {
-    const response = await fetch(`${this.config.url}/pdf?token=${this.config.apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ html, options }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Browserless error: ${response.statusText}`)
-    }
-
-    return Buffer.from(await response.arrayBuffer())
-  }
-}
+import { createPdfProvider } from '../../src/runtime/utils/providers'
 
 // Mock fetch globally
 global.fetch = vi.fn()

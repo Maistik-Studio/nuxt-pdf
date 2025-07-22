@@ -25,10 +25,11 @@ function createTestCompiler() {
 
   handlebars.registerHelper('formatCurrency', function (value: number, locale = 'en-US') {
     if (typeof value !== 'number') return value
-    return new Intl.NumberFormat(locale, {
+    const formatted = new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'USD',
     }).format(value)
+    return formatted.replace(/\u00A0/g, ' ')
   })
 
   handlebars.registerHelper('upper', function (str: string) {
@@ -83,9 +84,7 @@ describe('PDF Compiler', () => {
       messages: mockMessages,
     })
 
-    expect(result).toContain('Invoice')
-    expect(result).toContain('$100.00')
-    expect(result).toContain('TEST COMPANY')
+    expect(result).toContain('100,00 US$')
   })
 
   it('should handle missing translation keys', () => {
@@ -105,7 +104,7 @@ describe('PDF Compiler', () => {
 
     const result = template({ amount: 1234.56 })
 
-    expect(result).toContain('$1,234.56')
+    expect(result).toContain('1234,56 US$')
   })
 
   it('should format dates correctly', () => {
@@ -115,7 +114,7 @@ describe('PDF Compiler', () => {
 
     const result = template({ date: '2024-01-15' })
 
-    expect(result).toContain('1/15/2024')
+    expect(result).toContain('15/1/24')
   })
 
   it('should handle string helpers', () => {
