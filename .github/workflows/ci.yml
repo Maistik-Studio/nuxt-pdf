@@ -1,40 +1,50 @@
-name: CI
+name: CI / Release / Publish
 
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options: [patch, minor, major, prerelease]
 
 permissions:
-  contents: write
+  contents: write    # for checkout/push/tag
+  id-token: write    # if you ever want to sign packages
+
+env:
+  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
 jobs:
   test:
+    name: Test matrix
     runs-on: ubuntu-latest
-    
     strategy:
       matrix:
         node-version: [18, 20, 22]
-    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9.15.3
-      
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
-      
+          cache: pnpm
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -43,24 +53,24 @@ jobs:
 
       - name: Lint
         run: pnpm lint
-      
+
       - name: Build
         run: pnpm build
-      
+
       - name: Run unit tests
         run: pnpm test:unit
-      
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
-      
+
       - name: Run E2E tests
         run: pnpm test:e2e
         env:
           CI: true
-      
+
       - name: Upload test results
-        uses: actions/upload-artifact@v4
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.node-version }}
           path: |
@@ -69,33 +79,150 @@ jobs:
           retention-days: 30
 
   build:
-    runs-on: ubuntu-latest
+    name: Build module
     needs: test
-    
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9.15.3
-      
-      - name: Setup Node.js
+
+      - name: Setup Node.js 22
+        # Node 22+ ensures oxc-parser native binding is available
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'pnpm'
-      
+          node-version: 22
+          cache: pnpm
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      
+
+      - name: Rebuild native modules
+        run: pnpm rebuild
+
       - name: Build module
         run: pnpm build
-      
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
           retention-days: 7
+
+  release:
+    name: Release & Publish
+    needs: build
+    runs-on: ubuntu-latest
+
+    # only on main branch or manual dispatch
+    if: >
+      github.ref == 'refs/heads/main' ||
+      github.event_name == 'workflow_dispatch'
+
+    environment:
+      name: prod
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.3
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+          always-auth: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Rebuild native modules
+        run: pnpm rebuild
+
+      - name: Lint & unit tests
+        run: |
+          pnpm lint
+          pnpm test:unit
+
+      - name: Build
+        run: pnpm build
+
+      - name: Determine release type
+        id: determine
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "type=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+          else
+            BODY=$(git log -1 --pretty=%B)
+            if echo "$BODY" | grep -qE "BREAKING CHANGE|!:"; then
+              echo "type=major" >> $GITHUB_OUTPUT
+            elif echo "$BODY" | grep -qE "^feat"; then
+              echo "type=minor" >> $GITHUB_OUTPUT
+            else
+              echo "type=patch" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Bump version (no tag)
+        id: bump
+        run: |
+          NEW=$(npm version "${{ steps.determine.outputs.type }}" --no-git-tag-version)
+          echo "new_version=$NEW" >> $GITHUB_OUTPUT
+          echo "version_number=${NEW#v}" >> $GITHUB_OUTPUT
+
+      - name: Update changelog
+        run: pnpm exec changelogen --release --push=false
+
+      - name: Commit & tag release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "chore(release): v${{ steps.bump.outputs.version_number }} [skip ci]" || echo "No changes"
+          git tag v${{ steps.bump.outputs.version_number }}
+          git push origin main --follow-tags
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.bump.outputs.new_version }}
+          release_name: Release ${{ steps.bump.outputs.new_version }}
+          body: |
+            ## Changes
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md).
+            
+            ## Installation
+            ```bash
+            npm install @maistik/nuxt-pdf@${{ steps.bump.outputs.version_number }}
+            ```
+          draft: false
+          prerelease: ${{ contains(steps.bump.outputs.new_version, 'alpha') || contains(steps.bump.outputs.new_version, 'beta') || contains(steps.bump.outputs.new_version, 'rc') }}
+
+      - name: Configure npm auth
+        run: echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+
+      - name: Publish to npm (latest)
+        run: pnpm publish --access public --no-git-checks
+
+      - name: Release summary
+        run: |
+          echo "## 🚀 Released v${{ steps.bump.outputs.version_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Type**: ${{ steps.determine.outputs.type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **npm**: ✅ latest" >> $GITHUB_STEP_SUMMARY
+          echo "- **GitHub Release**: ✅ created" >> $GITHUB_STEP_SUMMARY
