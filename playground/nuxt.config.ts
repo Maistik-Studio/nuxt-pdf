@@ -1,6 +1,15 @@
 export default defineNuxtConfig({
   modules: ['../src/module'],
   devtools: { enabled: true },
+  app: {
+    head: {
+      script: [
+        {
+          src: 'https://cdn.tailwindcss.com',
+        },
+      ],
+    },
+  },
   pdf: {
     // provider: 'gotenberg', // Using puppeteer for local development
     provider: 'puppeteer', // Using puppeteer for local development
