@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.0.2
+
+
+### 🩹 Fixes
+
+- Url ([811e09e](https://github.com/Maistik-Studio/nuxt-pdf/commit/811e09e))
+- Pnpm ci package ([a92b48a](https://github.com/Maistik-Studio/nuxt-pdf/commit/a92b48a))
+- Testing ([1291672](https://github.com/Maistik-Studio/nuxt-pdf/commit/1291672))
+- Ci ([85a3ff3](https://github.com/Maistik-Studio/nuxt-pdf/commit/85a3ff3))
+- Ci ([38b1ff8](https://github.com/Maistik-Studio/nuxt-pdf/commit/38b1ff8))
+- Ci ([913cffa](https://github.com/Maistik-Studio/nuxt-pdf/commit/913cffa))
+
+### ❤️ Contributors
+
+- Marcos Sanz Latorre ([@marsanla](https://github.com/marsanla))
+
 ## [Unreleased]
 
 ### Added
