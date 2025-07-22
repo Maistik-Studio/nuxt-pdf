@@ -1,6 +1,6 @@
 {
   "name": "@maistik/nuxt-pdf",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "A Nuxt 3 module for server-side PDF generation using Handlebars templates",
   "type": "module",
   "private": false,
