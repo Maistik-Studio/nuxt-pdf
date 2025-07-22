@@ -1,0 +1,138 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+      
+      - name: Run tests
+        run: |
+          pnpm lint
+          pnpm test:unit
+      
+      - name: Build
+        run: pnpm build
+      
+      - name: Determine release type
+        id: release_type
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "type=${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+          else
+            # Auto-determine release type based on commit messages
+            if git log --format=%B -n 1 ${{ github.sha }} | grep -q "BREAKING CHANGE\|!:"; then
+              echo "type=major" >> $GITHUB_OUTPUT
+            elif git log --format=%B -n 1 ${{ github.sha }} | grep -q "^feat"; then
+              echo "type=minor" >> $GITHUB_OUTPUT
+            else
+              echo "type=patch" >> $GITHUB_OUTPUT
+            fi
+          fi
+      
+      - name: Bump version
+        id: version
+        run: |
+          RELEASE_TYPE="${{ steps.release_type.outputs.type }}"
+          NEW_VERSION=$(npm version $RELEASE_TYPE --no-git-tag-version)
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=${NEW_VERSION#v}" >> $GITHUB_OUTPUT
+      
+      - name: Update changelog
+        run: |
+          pnpm exec changelogen --release --push=false
+      
+      - name: Commit changes
+        run: |
+          git add .
+          git commit -m "chore(release): ${{ steps.version.outputs.new_version }} [skip ci]" || exit 0
+      
+      - name: Create Git tag
+        run: |
+          git tag ${{ steps.version.outputs.new_version }}
+      
+      - name: Push changes
+        run: |
+          git push origin main
+          git push origin ${{ steps.version.outputs.new_version }}
+      
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.new_version }}
+          release_name: Release ${{ steps.version.outputs.new_version }}
+          body: |
+            ## Changes
+            
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+            
+            ## Installation
+            
+            ```bash
+            npm install @maistik/nuxt-pdf@${{ steps.version.outputs.version_number }}
+            ```
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.new_version, 'alpha') || contains(steps.version.outputs.new_version, 'beta') || contains(steps.version.outputs.new_version, 'rc') }}
+      
+      - name: Publish to npm
+        run: pnpm publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Create release summary
+        run: |
+          echo "## 🚀 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Type**: ${{ steps.release_type.outputs.type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Published**: ✅ Successfully published to npm" >> $GITHUB_STEP_SUMMARY
+          echo "- **GitHub Release**: ✅ Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "npm install @maistik/nuxt-pdf@${{ steps.version.outputs.version_number }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

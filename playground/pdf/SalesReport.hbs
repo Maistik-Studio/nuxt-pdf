@@ -1,0 +1,231 @@
+<style>
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+  
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Arial', sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #333;
+  }
+  
+  .report-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e5e5e5;
+  }
+  
+  .report-header h1 {
+    font-size: 28px;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 10px;
+  }
+  
+  .report-header p {
+    color: #666;
+    font-size: 14px;
+  }
+  
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+  
+  .metric-card {
+    background-color: #f8fafc;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #2563eb;
+  }
+  
+  .metric-card.success {
+    border-left-color: #10b981;
+  }
+  
+  .metric-card.warning {
+    border-left-color: #f59e0b;
+  }
+  
+  .metric-card.info {
+    border-left-color: #3b82f6;
+  }
+  
+  .metric-card h3 {
+    font-size: 14px;
+    font-weight: bold;
+    color: #374151;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .metric-card .value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #1f2937;
+  }
+  
+  .quarterly-section {
+    margin-bottom: 30px;
+  }
+  
+  .quarterly-section h2 {
+    font-size: 18px;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e5e5;
+  }
+  
+  .quarters-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+  }
+  
+  .quarter-card {
+    background-color: #ffffff;
+    border: 1px solid #e5e5e5;
+    padding: 15px;
+    border-radius: 6px;
+    text-align: center;
+  }
+  
+  .quarter-card h4 {
+    font-size: 14px;
+    font-weight: bold;
+    color: #374151;
+    margin-bottom: 8px;
+  }
+  
+  .quarter-card .amount {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2563eb;
+  }
+  
+  .performance-section {
+    background-color: #f0f9ff;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #2563eb;
+    margin-bottom: 20px;
+  }
+  
+  .performance-section h3 {
+    font-size: 16px;
+    font-weight: bold;
+    color: #1e40af;
+    margin-bottom: 10px;
+  }
+  
+  .performance-rating {
+    font-size: 20px;
+    font-weight: bold;
+    color: #1f2937;
+  }
+  
+  .performance-rating.excellent {
+    color: #10b981;
+  }
+  
+  .performance-rating.good {
+    color: #3b82f6;
+  }
+  
+  .performance-rating.average {
+    color: #f59e0b;
+  }
+  
+  .performance-rating.needs-improvement {
+    color: #ef4444;
+  }
+  
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e5e5;
+    color: #666;
+    font-size: 11px;
+  }
+  
+  .page-break {
+    page-break-before: always;
+  }
+  
+  @media print {
+    .no-break {
+      page-break-inside: avoid;
+    }
+  }
+</style>
+
+<div class="report-header">
+  <h1>{{t "salesReport.title"}}</h1>
+  <p><strong>{{t "salesReport.period"}}:</strong> {{period}}</p>
+  <p>{{t "salesReport.generatedOn"}} {{formatDate generatedDate}}</p>
+</div>
+
+<div class="metrics-grid">
+  <div class="metric-card success">
+    <h3>{{t "salesReport.totalSales"}}</h3>
+    <div class="value">{{formatCurrency totalSales}}</div>
+  </div>
+  
+  <div class="metric-card info">
+    <h3>{{t "salesReport.totalOrders"}}</h3>
+    <div class="value">{{formatNumber totalOrders}}</div>
+  </div>
+  
+  <div class="metric-card warning">
+    <h3>{{t "salesReport.avgOrderValue"}}</h3>
+    <div class="value">{{formatCurrency avgOrderValue}}</div>
+    <small>{{percentage avgOrderValue totalSales}} of total sales</small>
+  </div>
+  
+  <div class="metric-card">
+    <h3>{{t "salesReport.performance"}}</h3>
+    <div class="value performance-rating {{#if (eq rating 'Excellent')}}excellent{{/if}}{{#if (eq rating 'Good')}}good{{/if}}{{#if (eq rating 'Average')}}average{{/if}}{{#if (eq rating 'Needs Improvement')}}needs-improvement{{/if}}">
+      {{rating}}
+    </div>
+  </div>
+</div>
+
+<div class="quarterly-section no-break">
+  <h2>{{t "salesReport.quarterlyBreakdown"}}</h2>
+  <div class="quarters-grid">
+    {{#each quarters}}
+    <div class="quarter-card">
+      <h4>{{this.name}}</h4>
+      <div class="amount">{{formatCurrency this.total}}</div>
+    </div>
+    {{/each}}
+  </div>
+</div>
+
+<div class="performance-section no-break">
+  <h3>{{t "salesReport.performance"}}</h3>
+  <p>Based on the total sales of {{formatCurrency totalSales}}, the performance rating is:</p>
+  <div class="performance-rating {{#if (eq rating 'Excellent')}}excellent{{/if}}{{#if (eq rating 'Good')}}good{{/if}}{{#if (eq rating 'Average')}}average{{/if}}{{#if (eq rating 'Needs Improvement')}}needs-improvement{{/if}}">
+    {{rating}}
+  </div>
+</div>
+
+<div class="footer">
+  <p>This report was automatically generated by the Nuxt PDF Module</p>
+  <p>{{t "salesReport.generatedOn"}} {{formatDate generatedDate "full"}}</p>
+</div>

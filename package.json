@@ -1,0 +1,60 @@
+{
+  "name": "@maistik/nuxt-pdf",
+  "version": "1.0.0",
+  "description": "A Nuxt 3 module for server-side PDF generation using Handlebars templates",
+  "type": "module",
+  "main": "./dist/module.mjs",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "nuxt-module-build prepare && nuxt-module-build build",
+    "dev": "nuxi dev playground",
+    "dev:build": "nuxi build playground",
+    "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground",
+    "release": "npm run lint && npm run test:unit && npm run prepack && changelogen --release && npm publish && git push --follow-tags",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run && playwright test",
+    "test:watch": "vitest watch",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "prepack": "nuxt-module-build build"
+  },
+  "dependencies": {
+    "@nuxt/kit": "^3.17.7",
+    "handlebars": "^4.7.8",
+    "puppeteer": "^24.14.0",
+    "form-data": "^4.0.4"
+  },
+  "devDependencies": {
+    "@nuxt/devtools": "latest",
+    "@nuxt/eslint-config": "^1.6.0",
+    "@nuxt/module-builder": "^1.0.1",
+    "@nuxt/schema": "^3.17.7",
+    "@nuxt/test-utils": "^3.19.2",
+    "@playwright/test": "^1.49.1",
+    "changelogen": "^0.6.2",
+    "eslint": "^9.31.0",
+    "nuxt": "^3.17.7",
+    "unbuild": "^3.5.0",
+    "vitest": "^3.2.4"
+  },
+  "keywords": [
+    "nuxt",
+    "nuxt3",
+    "pdf",
+    "handlebars",
+    "gotenberg",
+    "browserless",
+    "puppeteer"
+  ],
+  "author": "Maistik Studio",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Maistik-Studio/nuxt-pdf"
+  },
+  "packageManager": "pnpm@9.15.3"
+}

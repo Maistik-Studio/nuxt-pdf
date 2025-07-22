@@ -1,0 +1,268 @@
+<style>
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+  
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Arial', sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #333;
+  }
+  
+  .invoice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e5e5e5;
+  }
+  
+  .company-info h1 {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2563eb;
+    margin-bottom: 10px;
+  }
+  
+  .company-info p {
+    margin-bottom: 3px;
+    color: #666;
+  }
+  
+  .invoice-meta {
+    text-align: right;
+  }
+  
+  .invoice-meta h2 {
+    font-size: 28px;
+    font-weight: bold;
+    color: #1f2937;
+    margin-bottom: 10px;
+  }
+  
+  .invoice-meta p {
+    margin-bottom: 5px;
+  }
+  
+  .billing-section {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+  }
+  
+  .billing-info {
+    width: 48%;
+  }
+  
+  .billing-info h3 {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .billing-info p {
+    margin-bottom: 3px;
+    color: #666;
+  }
+  
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 30px;
+  }
+  
+  .items-table th {
+    background-color: #f8fafc;
+    padding: 12px;
+    text-align: left;
+    font-weight: bold;
+    border-bottom: 2px solid #e5e5e5;
+    color: #374151;
+  }
+  
+  .items-table th:last-child,
+  .items-table td:last-child {
+    text-align: right;
+  }
+  
+  .items-table td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e5e5;
+  }
+  
+  .items-table tr:nth-child(even) {
+    background-color: #f9fafb;
+  }
+  
+  .totals-section {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 30px;
+  }
+  
+  .totals-table {
+    width: 300px;
+    border-collapse: collapse;
+  }
+  
+  .totals-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e5e5e5;
+  }
+  
+  .totals-table td:first-child {
+    text-align: right;
+    font-weight: bold;
+    color: #374151;
+  }
+  
+  .totals-table td:last-child {
+    text-align: right;
+    width: 120px;
+  }
+  
+  .totals-table .grand-total {
+    background-color: #2563eb;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+  }
+  
+  .payment-terms {
+    background-color: #f0f9ff;
+    padding: 20px;
+    border-left: 4px solid #2563eb;
+    margin-bottom: 20px;
+  }
+  
+  .payment-terms h3 {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #1e40af;
+  }
+  
+  .notes {
+    background-color: #fefce8;
+    padding: 20px;
+    border-left: 4px solid #eab308;
+    margin-bottom: 20px;
+  }
+  
+  .notes h3 {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #a16207;
+  }
+  
+  .footer {
+    text-align: center;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e5e5;
+    color: #666;
+    font-style: italic;
+  }
+  
+  .page-break {
+    page-break-before: always;
+  }
+  
+  @media print {
+    .no-break {
+      page-break-inside: avoid;
+    }
+  }
+</style>
+
+<div class="invoice-header">
+  <div class="company-info">
+    <h1>{{upper company.name}}</h1>
+    <p>{{company.address}}</p>
+    <p>{{capitalize company.city}}, {{upper company.state}} {{company.zip}}</p>
+    <p>{{company.phone}}</p>
+    <p>{{company.email}}</p>
+  </div>
+  <div class="invoice-meta">
+    <h2>{{t "invoice.title"}}</h2>
+    <p><strong>{{t "invoice.invoiceNumber"}}:</strong> {{invoiceNumber}}</p>
+    <p><strong>{{t "invoice.issueDate"}}:</strong> {{formatDate issueDate}}</p>
+    <p><strong>{{t "invoice.dueDate"}}:</strong> {{formatDate dueDate}}</p>
+  </div>
+</div>
+
+<div class="billing-section">
+  <div class="billing-info">
+    <h3>{{t "invoice.billTo"}}</h3>
+    <p><strong>{{customer.name}}</strong></p>
+    <p>{{customer.address}}</p>
+    <p>{{customer.city}}, {{customer.state}} {{customer.zip}}</p>
+  </div>
+</div>
+
+<table class="items-table">
+  <thead>
+    <tr>
+      <th>{{t "invoice.description"}}</th>
+      <th>{{t "invoice.quantity"}}</th>
+      <th>{{t "invoice.price"}}</th>
+      <th>{{t "invoice.total"}}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each items}}
+    <tr>
+      <td>{{this.description}}</td>
+      <td>{{this.quantity}}</td>
+      <td>{{formatCurrency this.price}}</td>
+      <td>{{formatCurrency (lineTotal this.quantity this.price)}}</td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+
+<div class="totals-section">
+  <table class="totals-table">
+    <tr>
+      <td>{{t "invoice.subtotal"}}:</td>
+      <td>{{formatCurrency subtotal}}</td>
+    </tr>
+    <tr>
+      <td>{{t "invoice.tax"}} ({{formatNumber taxRate style="percent"}}):</td>
+      <td>{{formatCurrency tax}}</td>
+    </tr>
+    <tr class="grand-total">
+      <td>{{t "invoice.grandTotal"}}:</td>
+      <td>{{formatCurrency total}}</td>
+    </tr>
+  </table>
+</div>
+
+<div class="payment-terms no-break">
+  <h3>{{t "invoice.paymentTerms"}}</h3>
+  <p>Payment is due within {{paymentTerms}} days of the invoice date. Please remit payment to the address above.</p>
+</div>
+
+{{#if notes}}
+<div class="notes no-break">
+  <h3>{{t "invoice.notes"}}</h3>
+  <p>{{notes}}</p>
+</div>
+{{/if}}
+
+<div class="footer">
+  <p>{{t "invoice.thankYou"}}</p>
+</div>
