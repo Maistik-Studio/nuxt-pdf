@@ -1,4 +1,3 @@
-import { useRuntimeConfig } from '#imports'
 import type { HelperDelegate } from 'handlebars'
 import Handlebars from 'handlebars'
 
@@ -8,6 +7,7 @@ export function compilePdfComponent(
   messages: Record<string, string>,
   templateSources: Record<string, string>,
   partialSources: Record<string, string>,
+  customHelpers: Record<string, HelperDelegate> = {},
 ): string {
   // Create a fresh Handlebars instance
   const handlebars = Handlebars.create()
@@ -19,7 +19,7 @@ export function compilePdfComponent(
     let value = messages
 
     for (const k of keys) {
-      if (value && typeof value === 'object' && k in value) {
+      if (value && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, k)) {
         value = value[k] as any
       }
       else {
@@ -91,13 +91,29 @@ export function compilePdfComponent(
     return isEqual
   })
 
-  handlebars.registerHelper('ne', (a, b, opts) =>
-    a !== b ? opts.fn(this) : opts.inverse(this),
-  )
+  handlebars.registerHelper('ne', function (
+    a: unknown,
+    b: unknown,
+    options: Handlebars.HelperOptions,
+  ) {
+    const result = a !== b
+    if (options && typeof options.fn === 'function') {
+      return result ? options.fn(this) : options.inverse(this)
+    }
+    return result
+  })
 
-  handlebars.registerHelper('gt', (a, b, opts) =>
-    a > b ? opts.fn(this) : opts.inverse(this),
-  )
+  handlebars.registerHelper('gt', function (
+    a: number,
+    b: number,
+    options: Handlebars.HelperOptions,
+  ) {
+    const result = a > b
+    if (options && typeof options.fn === 'function') {
+      return result ? options.fn(this) : options.inverse(this)
+    }
+    return result
+  })
 
   // Register date formatting helper
   handlebars.registerHelper('formatDate', function (
@@ -140,27 +156,25 @@ export function compilePdfComponent(
     }).format(dateObj)
   })
 
-  // Register number formatting helper
-  handlebars.registerHelper('formatNumber', function (value: number, options: any = {}) {
+  // Register number formatting helper. Reads Intl options from Handlebars hash
+  // arguments, e.g. {{formatNumber value style="percent" minimumFractionDigits=2}}
+  handlebars.registerHelper('formatNumber', function (
+    value: number,
+    options?: Handlebars.HelperOptions,
+  ) {
     if (typeof value !== 'number') return value
-    return new Intl.NumberFormat(ctx.locale || 'en-US', options).format(value)
+    const intlOptions = (options && typeof options.hash === 'object') ? options.hash : {}
+    return new Intl.NumberFormat(ctx.locale || 'en-US', intlOptions).format(value)
   })
 
-  // Register custom helpers from runtime config
-  try {
-    const config = useRuntimeConfig()
-    const customHelpers = (config.pdf as any).customHelpers as Record<string, any>
-
-    if (customHelpers && typeof customHelpers === 'object') {
-      Object.entries(customHelpers).forEach(([name, helper]) => {
-        if (typeof helper === 'function') {
-          handlebars.registerHelper(name, helper as HelperDelegate)
-        }
-      })
+  // Register user-provided custom helpers (supplied via the
+  // `#pdf-custom-helpers` virtual module — see src/module.ts).
+  if (customHelpers && typeof customHelpers === 'object') {
+    for (const [name, helper] of Object.entries(customHelpers)) {
+      if (typeof helper === 'function') {
+        handlebars.registerHelper(name, helper)
+      }
     }
-  }
-  catch (error) {
-    console.warn('Failed to load custom helpers:', error)
   }
 
   // Register built-in helpers (always available)

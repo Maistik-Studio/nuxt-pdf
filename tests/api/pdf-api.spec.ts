@@ -64,7 +64,7 @@ test.describe('PDF API', () => {
       },
     })
 
-    expect(response.status()).toBe(500)
+    expect(response.status()).toBe(404)
   })
 
   test('should handle missing context', async ({ request }) => {
@@ -75,7 +75,7 @@ test.describe('PDF API', () => {
       },
     })
 
-    expect(response.status()).toBe(500)
+    expect(response.status()).toBe(400)
   })
 
   test('should handle different locales', async ({ request }) => {

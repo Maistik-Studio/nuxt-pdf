@@ -10,9 +10,9 @@
   },
   "devDependencies": {
     "@nuxt/devtools": "latest",
-    "nuxt": "^3.17.7"
+    "nuxt": "^4.4.8"
   },
   "dependencies": {
-    "handlebars": "^4.7.8"
+    "handlebars": "^4.7.9"
   }
 }

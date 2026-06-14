@@ -1,73 +1,120 @@
+<p align="center">
+  <img src="cover.png" alt="@maistik/nuxt-pdf" width="100%" />
+</p>
+
 # @maistik/nuxt-pdf
 
-A powerful Nuxt 3/4 module for server-side PDF generation using Handlebars templates. Generate beautiful, data-driven PDFs with support for multiple providers (Gotenberg, Browserless, Puppeteer Core) and built-in internationalization.
+[![npm version](https://img.shields.io/npm/v/@maistik/nuxt-pdf.svg)](https://www.npmjs.com/package/@maistik/nuxt-pdf)
+[![npm downloads](https://img.shields.io/npm/dm/@maistik/nuxt-pdf.svg)](https://www.npmjs.com/package/@maistik/nuxt-pdf)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Nuxt](https://img.shields.io/badge/Nuxt-3%20%26%204-00DC82?logo=nuxt.js)](https://nuxt.com)
+
+A powerful Nuxt 3 & 4 module for **server-side PDF generation** using [Handlebars](https://handlebarsjs.com/) templates. Generate beautiful, data-driven PDFs with support for multiple rendering providers (Gotenberg, Browserless, Puppeteer) and built-in internationalization.
+
+Everything runs server-side in Nitro/Node — no PDF code is shipped to the browser.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Project Structure](#project-structure)
+- [Configuration Reference](#configuration-reference)
+- [Providers](#providers)
+- [Internationalization (i18n)](#internationalization-i18n)
+- [Built-in Helpers](#built-in-helpers)
+- [Custom Helpers](#custom-helpers)
+- [Partials](#partials)
+- [Automatic Data Enrichment](#automatic-data-enrichment)
+- [Composable API — `usePdf()`](#composable-api--usepdf)
+- [Server API — `POST /api/pdf`](#server-api--post-apipdf)
+- [PDF Options](#pdf-options)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+
+---
 
 ## Features
 
-- 🎨 **Handlebars Templates** - Lightweight templating without Vue overhead
-- 🌍 **Internationalization** - Built-in i18n support with `{{t}}` helper
-- 🔄 **Provider Agnostic** - Support for Gotenberg, Browserless, and Puppeteer Core
-- 🎯 **SSR Safe** - Everything runs server-side in Nitro/Node
-- 🧩 **Composable API** - Easy-to-use `usePdf()` composable
-- 📱 **Responsive Design** - CSS-based layouts with print media queries
-- 🎪 **Playground** - Demo app with sample templates
+- 🎨 **Handlebars templates** — lightweight templating, no Vue/SSR overhead
+- 🌍 **Internationalization** — built-in i18n with the `{{t}}` helper and nested keys
+- 🔄 **Provider-agnostic** — Gotenberg, Browserless, or Puppeteer, switchable via config
+- 🎯 **SSR-safe** — rendering happens entirely server-side in Nitro/Node
+- 🧩 **Composable API** — simple `usePdf()` for `generate()` and `download()`
+- 🧮 **Rich helper library** — currency, dates, numbers, math, string and comparison helpers
+- 🛠️ **Custom helpers** — define your own helpers in `nuxt.config` (works in production)
+- 📐 **Print-aware** — `@page`, page breaks, and `@media print` styling
+- 🎪 **Playground** — demo app with Invoice & Sales Report templates in 3 languages
+
+---
+
+## Requirements
+
+| Requirement | Version |
+| ----------- | ------- |
+| Nuxt        | `3.x` or `4.x` |
+| Node.js     | `18`, `20`, or `22` (CI-tested; `22` recommended) |
+| Handlebars  | `^4.7` (peer-installed alongside the module) |
+
+A Chromium/Chrome runtime is required **only** for the `puppeteer` provider. The
+`gotenberg` and `browserless` providers run the browser remotely.
+
+---
+
+## Installation
+
+```bash
+# pnpm
+pnpm add @maistik/nuxt-pdf handlebars
+
+# npm
+npm install @maistik/nuxt-pdf handlebars
+
+# yarn
+yarn add @maistik/nuxt-pdf handlebars
+```
+
+> `handlebars` is a peer dependency so your app and the module share a single
+> instance. `puppeteer` ships as a dependency and is only loaded at runtime when
+> the `puppeteer` provider is selected.
+
+---
 
 ## Quick Start
 
-### Installation
+### 1. Register the module
 
-```bash
-npm install @maistik/nuxt-pdf handlebars
-```
-
-### Configuration
-
-Add the module to your `nuxt.config.ts`:
-
-```typescript
+```ts
+// nuxt.config.ts
 export default defineNuxtConfig({
   modules: ['@maistik/nuxt-pdf'],
   pdf: {
-    provider: 'puppeteer', // or 'gotenberg' or 'browserless'
-    components: ['pdf'],
-    sharedComponents: ['pdf/partials'],
+    provider: 'puppeteer', // 'gotenberg' | 'browserless' | 'puppeteer'
+    components: ['pdf'], // where your .hbs templates live
+    sharedComponents: ['pdf/partials'], // where your .hbs partials live
     enableI18n: true,
     defaultLocale: 'en',
-    availableLocales: ['en', 'es', 'fr'],
+    availableLocales: ['en', 'es'],
     i18nMessages: {
-      en: {
-        invoice: {
-          title: 'Invoice',
-          total: 'Total'
-        }
-      },
-      es: {
-        invoice: {
-          title: 'Factura',
-          total: 'Total'
-        }
-      }
+      en: { invoice: { title: 'Invoice', total: 'Total' } },
+      es: { invoice: { title: 'Factura', total: 'Total' } },
     },
-    providers: {
-      puppeteer: {
-        launchOptions: {
-          headless: true,
-          args: ['--no-sandbox']
-        }
-      }
-    }
-  }
+  },
 })
 ```
 
-### Create a Template
+### 2. Create a template
 
-Create `pdf/Invoice.hbs` in your project:
+Create `pdf/Invoice.hbs` in your project root:
 
 ```handlebars
 <style>
   @page { size: A4; margin: 20mm; }
-  body { font-family: Arial, sans-serif; }
+  body { font-family: Arial, sans-serif; color: #333; }
   .header { text-align: center; margin-bottom: 30px; }
   .total { font-weight: bold; font-size: 18px; }
 </style>
@@ -91,198 +138,300 @@ Create `pdf/Invoice.hbs` in your project:
 </div>
 ```
 
-### Generate PDFs
-
-Use the composable in your Vue components:
+### 3. Generate the PDF
 
 ```vue
-<script setup>
+<script setup lang="ts">
 const { generate, download } = usePdf()
 
-const generateInvoice = async () => {
+async function makeInvoice() {
   const data = {
     invoiceNumber: 'INV-001',
-    items: [
-      { description: 'Service', price: 100 }
-    ],
-    total: 100
+    items: [{ description: 'Service', price: 100 }],
+    total: 100,
   }
-  
-  // Generate and preview
+
+  // Get a Blob (preview, upload, attach to email, ...)
   const blob = await generate('Invoice', data, { format: 'A4' }, 'en')
-  
-  // Or download directly
+
+  // Or trigger a browser download directly
   await download('Invoice', data, { format: 'A4' }, 'invoice.pdf', 'en')
 }
 </script>
 ```
 
+---
+
+## Project Structure
+
+Template directories are resolved relative to your **project root** (not `srcDir`),
+so the same layout works for both Nuxt 3 and Nuxt 4 (which moves `srcDir` to `app/`):
+
+```
+your-project/
+├─ nuxt.config.ts
+├─ pdf/                      # `components` → templates
+│  ├─ Invoice.hbs           # referenced as "Invoice"
+│  ├─ SalesReport.hbs       # referenced as "SalesReport"
+│  └─ partials/             # `sharedComponents` → partials
+│     ├─ header.hbs         # used as {{> header}}
+│     └─ footer.hbs         # used as {{> footer}}
+└─ ...
+```
+
+- Templates are discovered **recursively** by their `.hbs` extension.
+- A template's **name is its filename without extension** (`Invoice.hbs` → `"Invoice"`).
+- Partials are registered under their filename and used with `{{> name}}`.
+
+---
+
+## Configuration Reference
+
+All options live under the `pdf` key in `nuxt.config.ts`.
+
+| Option | Type | Default | Description |
+| ------ | ---- | ------- | ----------- |
+| `provider` | `'gotenberg' \| 'browserless' \| 'puppeteer'` | `'gotenberg'` | Active rendering backend. |
+| `components` | `string[]` | `['pdf']` | Directories (relative to project root) scanned for `.hbs` templates. |
+| `sharedComponents` | `string[]` | `['pdf/partials']` | Directories scanned for `.hbs` partials. |
+| `enableI18n` | `boolean` | `true` | Enables the `{{t}}` helper and locale message lookup. |
+| `defaultLocale` | `string` | `'en'` | Locale used when none is passed to `generate()`. |
+| `availableLocales` | `string[]` | `['en']` | Locales exposed to the client via `getAvailableLocales()`. |
+| `i18nMessages` | `Record<string, Record<string, unknown>>` | `{}` | Nested translation messages keyed by locale. |
+| `providers` | `object` | see below | Per-provider connection settings. |
+| `defaultOptions` | `PdfOptions` | see below | Default render options merged with per-call options. |
+| `customHelpers` | `Record<string, Function>` | `{}` | Extra Handlebars helpers (see [Custom Helpers](#custom-helpers)). |
+
+<details>
+<summary><strong>Default <code>providers</code> and <code>defaultOptions</code></strong></summary>
+
+```ts
+providers: {
+  gotenberg: { url: 'http://localhost:3000' },
+  browserless: { url: 'https://chrome.browserless.io', apiKey: '' },
+  puppeteer: {
+    launchOptions: {
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    },
+  },
+},
+defaultOptions: {
+  format: 'A4',
+  margin: { top: 20, bottom: 20, left: 20, right: 20 }, // millimetres
+  landscape: false,
+  printBackground: true,
+  pageBreak: {
+    before: ['always'],
+    after: ['always'],
+    avoid: ['.no-break'],
+  },
+},
+```
+
+> **Margins are expressed in millimetres.** The Gotenberg provider converts them
+> to inches automatically.
+
+</details>
+
+---
+
 ## Providers
 
-### Puppeteer Core (Local)
+Switch backends by changing `provider` and supplying the matching `providers` entry.
 
-Best for development and on-premise deployments:
+### Puppeteer (local / on-prem)
 
-```typescript
+Best for development and single-server deployments. Uses the Chromium bundled with
+Puppeteer by default; point it at a system Chrome with `executablePath`.
+
+```ts
 pdf: {
   provider: 'puppeteer',
   providers: {
     puppeteer: {
       launchOptions: {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      }
-    }
-  }
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        // Optional — defaults to Puppeteer's bundled Chromium:
+        // executablePath: process.env.CHROME_PATH,
+      },
+    },
+  },
 }
 ```
+
+> `launchOptions` is passed straight to `puppeteer.launch()`. `--no-sandbox` is
+> commonly required inside containers, but only disable the sandbox in trusted
+> environments.
 
 ### Gotenberg (Docker)
 
-Perfect for containerized environments:
+Ideal for containerized stacks. Run Gotenberg alongside your app:
 
-```typescript
+```bash
+docker run --rm -p 3000:3000 gotenberg/gotenberg:8
+```
+
+```ts
 pdf: {
   provider: 'gotenberg',
   providers: {
-    gotenberg: {
-      url: 'http://gotenberg:3000'
-    }
-  }
+    gotenberg: { url: 'http://gotenberg:3000' },
+  },
 }
 ```
 
-### Browserless (Cloud)
+### Browserless (cloud / self-hosted)
 
-Great for serverless deployments:
+Great for serverless deployments where you don't manage a browser:
 
-```typescript
+```ts
 pdf: {
   provider: 'browserless',
   providers: {
     browserless: {
       url: 'https://chrome.browserless.io',
-      apiKey: process.env.BROWSERLESS_API_KEY
-    }
-  }
+      apiKey: process.env.BROWSERLESS_API_KEY,
+    },
+  },
 }
 ```
+
+| Provider | Where Chrome runs | Best for |
+| -------- | ----------------- | -------- |
+| `puppeteer` | In-process, local | Dev, on-prem, full control |
+| `gotenberg` | Separate container | Docker / Kubernetes |
+| `browserless` | Remote service | Serverless / managed |
+
+---
+
+## Internationalization (i18n)
+
+Provide nested messages per locale and look them up with the `{{t}}` helper using
+dot-separated keys:
+
+```ts
+i18nMessages: {
+  en: { invoice: { title: 'Invoice', total: 'Total' } },
+  fr: { invoice: { title: 'Facture', total: 'Total' } },
+}
+```
+
+```handlebars
+<h1>{{t "invoice.title"}}</h1>
+```
+
+- The locale is chosen per call (`generate(..., locale)`), falling back to
+  `defaultLocale`.
+- Missing keys render the **key itself** (e.g. `invoice.unknown`) so gaps are visible.
+- The same locale drives `Intl`-based helpers (`formatCurrency`, `formatDate`,
+  `formatNumber`).
+
+---
 
 ## Built-in Helpers
 
+These helpers are always registered, regardless of configuration.
+
 ### Internationalization
 ```handlebars
-{{t "invoice.title"}} <!-- Outputs localized text -->
+{{t "invoice.title"}}              <!-- localized text (or the key if missing) -->
 ```
 
-### Currency Formatting
+### Currency
 ```handlebars
-{{formatCurrency 1234.56}} <!-- $1,234.56 -->
-{{formatCurrency 1234.56 "EUR"}} <!-- €1,234.56 -->
+{{formatCurrency 1234.56}}         <!-- $1,234.56 (USD by default) -->
+{{formatCurrency 1234.56 "EUR"}}   <!-- €1,234.56 -->
+{{formatCurrency amount currency="GBP"}}
 ```
 
-### Date Formatting
+### Dates
 ```handlebars
-{{formatDate date}} <!-- 12/25/2024 -->
-{{formatDate date "full"}} <!-- Wednesday, December 25, 2024 -->
+{{formatDate date}}                <!-- short style, e.g. 1/15/24 -->
+{{formatDate date "full"}}         <!-- full style, e.g. Monday, January 15, 2024 -->
+{{formatDate date format="long"}}  <!-- styles: full | long | medium | short -->
 ```
 
-### Number Formatting
+### Numbers
 ```handlebars
-{{formatNumber 1234.56}} <!-- 1,234.56 -->
-{{formatNumber 0.15 style="percent"}} <!-- 15% -->
+{{formatNumber 1234.56}}                 <!-- 1,234.56 -->
+{{formatNumber 0.15 style="percent"}}    <!-- 15% -->
+{{formatNumber n minimumFractionDigits=2}}
 ```
 
-### Math Operations
+> `formatNumber` forwards any hash arguments to
+> [`Intl.NumberFormat`](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Intl/NumberFormat).
+
+### Math
 ```handlebars
-{{add 10 5}} <!-- 15 -->
-{{subtract 10 5}} <!-- 5 -->
-{{multiply 10 5}} <!-- 50 -->
-{{divide 10 5}} <!-- 2 -->
-{{percentage 25 100}} <!-- 25% -->
+{{add 10 5}}            <!-- 15 -->
+{{subtract 10 5}}       <!-- 5 -->
+{{multiply 10 5}}       <!-- 50 -->
+{{divide 10 5}}         <!-- 2  (returns 0 when dividing by 0) -->
+{{percentage 25 100}}   <!-- 25.00% -->
+{{lineTotal qty price}} <!-- qty * price, fixed to 2 decimals -->
 ```
+
+### Strings
+```handlebars
+{{upper "hello world"}}          <!-- HELLO WORLD -->
+{{lower "HELLO WORLD"}}          <!-- hello world -->
+{{capitalize "hello world"}}     <!-- Hello world -->
+{{truncate "Long text here" 10}} <!-- Long text ... -->
+```
+
+### Comparison
+
+Work both inline (returning a boolean) and as block helpers:
+
+```handlebars
+{{#if (eq status "paid")}}Paid{{/if}}
+{{#eq a b}}equal{{else}}different{{/eq}}
+{{#ne a b}}not equal{{/ne}}
+{{#gt total 1000}}High value{{/gt}}
+```
+
+---
 
 ## Custom Helpers
 
-You can define your own custom helpers in the configuration:
+Define your own Handlebars helpers in `nuxt.config.ts`. They are compiled into a
+server-side module at build time, so **they work in development *and* production**:
 
-```typescript
+```ts
 pdf: {
   customHelpers: {
     // Simple value transformation
-    customFormat: (value: any) => `[${value}]`,
-    
-    // String manipulation
-    repeat: (str: string, times: number) => str.repeat(times || 1),
-    
+    shout: (value: string) => `${String(value ?? '').toUpperCase()}!`,
+
+    // Repeat a string
+    repeat: (str: string, times: number) => String(str).repeat(times || 1),
+
     // Block helper with conditional logic
-    ifEquals: function(this: any, arg1: any, arg2: any, options: any) {
-      return (arg1 === arg2) ? options.fn(this) : options.inverse(this)
-    }
-  }
+    ifEquals(this: unknown, a: unknown, b: unknown, options: any) {
+      return a === b ? options.fn(this) : options.inverse(this)
+    },
+  },
 }
 ```
 
-Use them in templates:
 ```handlebars
-{{customFormat "hello"}} <!-- [hello] -->
-{{repeat "★" 5}} <!-- ★★★★★ -->
-{{#ifEquals status "active"}}Active User{{else}}Inactive User{{/ifEquals}}
+{{shout "hello"}}                 <!-- HELLO! -->
+{{repeat "★" 5}}                  <!-- ★★★★★ -->
+{{#ifEquals status "active"}}Active{{else}}Inactive{{/ifEquals}}
 ```
 
-### String Helpers
-```handlebars
-{{upper "hello world"}} <!-- HELLO WORLD -->
-{{lower "HELLO WORLD"}} <!-- hello world -->
-{{capitalize "hello world"}} <!-- Hello world -->
-{{truncate "Long text here" 10}} <!-- Long text... -->
-```
+> ⚠️ **Custom helpers must be self-contained.** Only each function's *source* is
+> serialized into the runtime module — a helper cannot reference variables, imports,
+> or values from the surrounding `nuxt.config.ts` scope. Keep all logic inside the
+> function body.
 
-### Line Calculations
-```handlebars
-{{lineTotal quantity price}} <!-- quantity * price -->
-```
+---
 
-## Template Features
+## Partials
 
-### Automatic Enrichment
-
-The module automatically enriches your data based on template names:
-
-**Invoice Templates** get:
-- `subtotal` - Sum of all line items
-- `tax` - Calculated tax amount
-- `total` - Subtotal + tax
-- `dueDate` - Calculated from issue date + payment terms
-
-**Sales Report Templates** get:
-- `quarters` - Quarterly breakdown of sales data
-- `rating` - Performance rating based on total sales
-
-### CSS Styling
-
-Use standard CSS with print-specific rules:
-
-```css
-@page {
-  size: A4;
-  margin: 20mm;
-}
-
-.page-break {
-  page-break-before: always;
-}
-
-@media print {
-  .no-break {
-    page-break-inside: avoid;
-  }
-}
-```
-
-### Partials
-
-Create reusable components in your `sharedComponents` directory:
+Create reusable fragments in any `sharedComponents` directory:
 
 ```handlebars
 <!-- pdf/partials/header.hbs -->
@@ -292,34 +441,106 @@ Create reusable components in your `sharedComponents` directory:
 </div>
 ```
 
-Use in templates:
+Use them in templates, passing parameters as needed:
+
 ```handlebars
 {{> header title="My Document" subtitle="Generated Report"}}
 ```
 
-## API Reference
+---
 
-### `usePdf()`
+## Automatic Data Enrichment
 
-The main composable for PDF operations:
+For convenience, the module derives some fields based on the **template name**:
 
-```typescript
+**Invoice templates** (name contains `invoice`) receive, when `items[]` is present:
+
+- `subtotal` — sum of `quantity × price` across items
+- `tax` — `subtotal × (taxRate ?? 0.1)`
+- `total` — `subtotal + tax`
+- `dueDate` — `issueDate + paymentTerms` days (when both are provided)
+
+**Sales report templates** (name contains `salesreport`) receive, when `salesData[]`
+is present:
+
+- `quarters` — quarterly totals derived from each entry's `date`/`amount`
+- `rating` — performance rating from total sales (`Excellent` / `Good` / `Average` /
+  `Needs Improvement`)
+
+> Provide these values yourself if you don't want them computed — your data is
+> spread first, then enriched.
+
+---
+
+## Composable API — `usePdf()`
+
+```ts
 const {
-  generate,    // (template, data, options?, locale?) => Promise<Blob>
-  download,    // (template, data, options?, filename?, locale?) => Promise<void>
+  generate,            // (template, data, options?, locale?) => Promise<Blob>
+  download,            // (template, data, options?, filename?, locale?) => Promise<void>
   getAvailableLocales, // () => string[]
-  getDefaultLocale     // () => string
+  getDefaultLocale,    // () => string
 } = usePdf()
 ```
 
-### Options
+| Method | Signature | Notes |
+| ------ | --------- | ----- |
+| `generate` | `(template, data, options?, locale?) => Promise<Blob>` | Returns an `application/pdf` `Blob`. |
+| `download` | `(template, data, options?, filename?, locale?) => Promise<void>` | Browser-only — creates and clicks a download link. |
+| `getAvailableLocales` | `() => string[]` | Reads `availableLocales` from public runtime config. |
+| `getDefaultLocale` | `() => string` | Reads `defaultLocale` from public runtime config. |
 
-```typescript
+When no `locale` is passed, `defaultLocale` is used.
+
+---
+
+## Server API — `POST /api/pdf`
+
+The composable calls a server route that you can also hit directly (e.g. from other
+services). The module registers it automatically.
+
+**Request**
+
+```http
+POST /api/pdf
+Content-Type: application/json
+```
+
+```json
+{
+  "template": "Invoice",
+  "ctx": {
+    "data": { "invoiceNumber": "INV-001", "items": [] },
+    "options": { "format": "A4" },
+    "locale": "en"
+  }
+}
+```
+
+**Response** — binary `application/pdf` body.
+
+**Status codes**
+
+| Code | Meaning |
+| ---- | ------- |
+| `200` | PDF generated; body is the PDF bytes. |
+| `400` | Missing/invalid `template` or `ctx`. |
+| `404` | `template` does not match any discovered `.hbs` file. |
+| `500` | Rendering or provider failure (details are logged server-side, not leaked). |
+
+---
+
+## PDF Options
+
+Passed as the `options` argument to `generate()`/`download()` and merged over
+`defaultOptions`:
+
+```ts
 interface PdfOptions {
   format?: 'A4' | 'Letter' | 'Legal'
   margin?: {
-    top?: number
-    bottom?: number  
+    top?: number    // millimetres
+    bottom?: number
     left?: number
     right?: number
   }
@@ -333,46 +554,66 @@ interface PdfOptions {
 }
 ```
 
+### Print-aware CSS
+
+Templates are plain HTML/CSS, so you can use print rules directly:
+
+```css
+@page { size: A4; margin: 20mm; }
+
+.page-break { page-break-before: always; }
+
+@media print {
+  .no-break { page-break-inside: avoid; }
+}
+```
+
+---
+
 ## Development
 
-### Playground
-
-The module includes a full playground application:
+This repository uses **pnpm**.
 
 ```bash
-npm run dev
+pnpm install          # install dependencies
+pnpm dev              # run the playground with HMR
+pnpm dev:build        # build the playground (Nitro)
+pnpm build            # build the module
+pnpm lint             # eslint
+pnpm test:unit        # vitest unit tests
+pnpm test:e2e         # playwright end-to-end tests
+pnpm test             # unit + e2e
 ```
 
-This starts a demo app with sample Invoice and Sales Report templates in multiple languages.
+The `playground/` app demonstrates Invoice and Sales Report templates in English,
+Spanish, and French, plus a custom helper and provider configuration examples.
 
-### Building
+---
 
-```bash
-npm run build
-```
+## Troubleshooting
 
-### Testing
+**Template `"X"` not found (404).** The `template` must match a `.hbs` filename
+(without extension) inside one of your `components` directories. Remember the lookup
+is by filename, not path.
 
-```bash
-npm run test
-```
+**Puppeteer can't find Chrome.** Either rely on Puppeteer's bundled Chromium (omit
+`executablePath`) or set `CHROME_PATH`/`executablePath` to a valid Chrome binary. In
+containers you'll usually need `args: ['--no-sandbox']`.
 
-## Examples
+**Gotenberg/Browserless errors.** Confirm the `url` is reachable from the server and,
+for Browserless, that `apiKey` is set.
 
-Check out the `playground/` directory for complete examples including:
+**My custom helper does nothing.** Ensure it's a function and fully self-contained —
+it cannot close over values defined elsewhere in `nuxt.config.ts` (only the function
+source is serialized).
 
-- **Invoice Template** - Complete invoice with line items, taxes, and totals
-- **Sales Report Template** - Comprehensive report with metrics and quarterly breakdown
-- **Multi-language Support** - Templates in English, Spanish, and French
-- **Multiple Providers** - Configuration examples for all supported providers
+---
 
 ## License
 
-MIT
+[MIT](./LICENSE)
 
-## Contributing
-
-Contributions are welcome! Please read our contributing guidelines and submit pull requests to our repository.
+---
 
 ## Support
 

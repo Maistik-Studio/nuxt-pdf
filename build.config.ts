@@ -15,6 +15,8 @@ export default defineBuildConfig({
     'handlebars',
     'puppeteer',
     'form-data',
+    // Virtual module injected into the consumer's Nitro build at runtime.
+    '#pdf-custom-helpers',
   ],
   failOnWarn: false,
 })

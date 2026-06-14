@@ -122,12 +122,19 @@ export default defineNuxtConfig({
         launchOptions: {
           headless: true,
           args: ['--no-sandbox', '--disable-setuid-sandbox'],
-          // executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome'
-          executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+          // Use a system Chrome when CHROME_PATH is set, otherwise fall back to
+          // the Chromium bundled with Puppeteer (works on CI and Linux).
+          ...(process.env.CHROME_PATH
+            ? { executablePath: process.env.CHROME_PATH }
+            : {}),
         },
       },
     },
-    customHelpers: {},
+    customHelpers: {
+      // Custom helpers must be self-contained (no closure over outer scope):
+      // only the function source is serialized into the runtime module.
+      shout: (value: string) => `${String(value ?? '').toUpperCase()}!`,
+    },
     defaultOptions: {
       format: 'A4',
       margin: {

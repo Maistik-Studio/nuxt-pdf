@@ -63,7 +63,8 @@ test.describe('PDF API', () => {
       },
     })
 
-    expect(response.status()).toBe(500)
+    // Unknown template is a client error (not found).
+    expect(response.status()).toBe(404)
   })
 
   test('should handle missing context', async ({ request }) => {
@@ -74,6 +75,7 @@ test.describe('PDF API', () => {
       },
     })
 
-    expect(response.status()).toBe(500)
+    // Missing context is a bad request.
+    expect(response.status()).toBe(400)
   })
 })

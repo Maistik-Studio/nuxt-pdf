@@ -1,17 +1,17 @@
 import FormData from 'form-data'
-import type { PdfProvider } from '../types'
+import type { PdfProvider, PdfProviderConfig } from '../types'
 
 export function createPdfProvider(
   providerType: string,
-  config: any,
+  config: Partial<PdfProviderConfig>,
 ): PdfProvider {
   switch (providerType) {
     case 'gotenberg':
-      return new GotenbergProvider(config.gotenberg)
+      return new GotenbergProvider(config.gotenberg!)
     case 'browserless':
-      return new BrowserlessProvider(config.browserless)
+      return new BrowserlessProvider(config.browserless!)
     case 'puppeteer':
-      return new PuppeteerProvider(config.puppeteer)
+      return new PuppeteerProvider(config.puppeteer!)
     default:
       throw new Error(`Unknown PDF provider: ${providerType}`)
   }

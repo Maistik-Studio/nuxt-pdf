@@ -1,4 +1,4 @@
-import { defineNuxtModule, addServerHandler, createResolver, addImports } from '@nuxt/kit'
+import { defineNuxtModule, addServerHandler, createResolver, addImports, addServerTemplate } from '@nuxt/kit'
 import type { HelperDelegate } from 'handlebars'
 import { readFileSync, existsSync, readdirSync, statSync } from 'fs'
 import { join } from 'path'
@@ -10,7 +10,7 @@ export interface PdfModuleOptions {
   enableI18n: boolean
   defaultLocale: string
   availableLocales: string[]
-  i18nMessages: Record<string, Record<string, string>>
+  i18nMessages: Record<string, Record<string, unknown>>
   providers: {
     gotenberg: {
       url: string
@@ -47,7 +47,7 @@ export default defineNuxtModule<PdfModuleOptions>({
     name: '@maistik/nuxt-pdf',
     configKey: 'pdf',
     compatibility: {
-      nuxt: '^3.0.0',
+      nuxt: '>=3.0.0',
     },
   },
   defaults: {
@@ -98,9 +98,15 @@ export default defineNuxtModule<PdfModuleOptions>({
     const templateSources: Record<string, string> = {}
     const partialSources: Record<string, string> = {}
 
+    // Resolve template directories relative to the project root. We use
+    // `rootDir` (not `srcDir`) because PDF templates are project-level assets,
+    // and Nuxt 4 moved the default `srcDir` to `<rootDir>/app`, which would
+    // otherwise break template discovery for existing projects.
+    const baseDir = nuxt.options.rootDir
+
     // Scan component directories for templates
     for (const componentDir of options.components) {
-      const fullPath = join(nuxt.options.srcDir, componentDir)
+      const fullPath = join(baseDir, componentDir)
       if (existsSync(fullPath)) {
         scanDirectory(fullPath, templateSources, '.hbs')
       }
@@ -108,7 +114,7 @@ export default defineNuxtModule<PdfModuleOptions>({
 
     // Scan shared component directories for partials
     for (const sharedDir of options.sharedComponents) {
-      const fullPath = join(nuxt.options.srcDir, sharedDir)
+      const fullPath = join(baseDir, sharedDir)
       if (existsSync(fullPath)) {
         scanDirectory(fullPath, partialSources, '.hbs')
       }
@@ -125,8 +131,16 @@ export default defineNuxtModule<PdfModuleOptions>({
       defaultOptions: options.defaultOptions,
       templateSources,
       partialSources,
-      customHelpers: options.customHelpers || {},
     }
+
+    // Custom helpers are functions, which cannot survive `runtimeConfig`
+    // serialization (it is JSON-encoded for the Nitro build). Instead we emit
+    // them as a server-side virtual module whose contents are the serialized
+    // function sources, so they are available at runtime in production too.
+    addServerTemplate({
+      filename: '#pdf-custom-helpers',
+      getContents: () => generateCustomHelpersModule(options.customHelpers || {}),
+    })
 
     // Add public runtime config for client-side
     nuxt.options.runtimeConfig.public.pdf = {
@@ -138,6 +152,7 @@ export default defineNuxtModule<PdfModuleOptions>({
     // Add server handler
     addServerHandler({
       route: '/api/pdf',
+      method: 'post',
       handler: resolver.resolve('./runtime/server/api/pdf.post'),
     })
 
@@ -149,6 +164,21 @@ export default defineNuxtModule<PdfModuleOptions>({
     })
   },
 })
+
+/**
+ * Builds the source of the `#pdf-custom-helpers` virtual module by serializing
+ * each helper function. Helpers must be self-contained (no closure over outer
+ * scope), since only the function source is preserved.
+ */
+function generateCustomHelpersModule(
+  helpers: Record<string, HelperDelegate>,
+): string {
+  const entries = Object.entries(helpers)
+    .filter(([, fn]) => typeof fn === 'function')
+    .map(([name, fn]) => `  ${JSON.stringify(name)}: ${fn.toString()}`)
+
+  return `export const customHelpers = {\n${entries.join(',\n')}\n}\n`
+}
 
 function scanDirectory(dir: string, sources: Record<string, string>, extension: string) {
   if (!existsSync(dir)) return
