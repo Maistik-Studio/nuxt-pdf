@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.1.2
+
+[compare changes](https://github.com/Maistik-Studio/nuxt-pdf/compare/v1.0.17...v1.1.2)
+
+### 🩹 Fixes
+
+- Nuxt 4 support, security hardening, and working custom helpers ([2570921](https://github.com/Maistik-Studio/nuxt-pdf/commit/2570921))
+- Stabilize and speed up E2E PDF generation ([1608f4d](https://github.com/Maistik-Studio/nuxt-pdf/commit/1608f4d))
+
+### 🏡 Chore
+
+- Update playground ([e4655a0](https://github.com/Maistik-Studio/nuxt-pdf/commit/e4655a0))
+
+### ✅ Tests
+
+- Improve test reliability and lint cleanup ([4945742](https://github.com/Maistik-Studio/nuxt-pdf/commit/4945742))
+
+### 🤖 CI
+
+- Only run lint on Node 22 ([b36ae1f](https://github.com/Maistik-Studio/nuxt-pdf/commit/b36ae1f))
+- Drop Node 18 from test matrix ([ceccec2](https://github.com/Maistik-Studio/nuxt-pdf/commit/ceccec2))
+- Target Node 22 and 24 ([3810ded](https://github.com/Maistik-Studio/nuxt-pdf/commit/3810ded))
+
+### ❤️ Contributors
+
+- Marcos Sanz Latorre ([@marsanla](https://github.com/marsanla))
+
 ## v1.0.17
 
 [compare changes](https://github.com/Maistik-Studio/nuxt-pdf/compare/v1.0.16...v1.0.17)
