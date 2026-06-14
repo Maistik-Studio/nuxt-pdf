@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v1.1.1...main
+
+[compare changes](https://github.com/Maistik-Studio/nuxt-pdf/compare/v1.1.1...main)
+
+### 🏡 Chore
+
+- **release:** V1.1.1 [skip ci] ([7b45972](https://github.com/Maistik-Studio/nuxt-pdf/commit/7b45972))
+- **release:** V1.1.3 [skip ci] ([f2cf091](https://github.com/Maistik-Studio/nuxt-pdf/commit/f2cf091))
+
+### 🤖 CI
+
+- Make release publish-first and idempotent ([ee261bd](https://github.com/Maistik-Studio/nuxt-pdf/commit/ee261bd))
+- Fix release version desync (double bump + unpushed tag) ([ba04886](https://github.com/Maistik-Studio/nuxt-pdf/commit/ba04886))
+
+### ❤️ Contributors
+
+- Marcos Sanz Latorre ([@marsanla](https://github.com/marsanla))
+
 ## v1.1.4
 
 [compare changes](https://github.com/Maistik-Studio/nuxt-pdf/compare/v1.1.1...v1.1.4)
