@@ -27,7 +27,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18, 20, 22]
+        # Node 18 is dropped: the build/lint toolchain (nuxt-module-builder,
+        # ESLint 10) relies on node:util styleText and Object.groupBy, which
+        # require Node 20.12+ / 21+.
+        node-version: [20, 22]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
