@@ -27,10 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Node 18 is dropped: the build/lint toolchain (nuxt-module-builder,
-        # ESLint 10) relies on node:util styleText and Object.groupBy, which
-        # require Node 20.12+ / 21+.
-        node-version: [20, 22]
+        node-version: [22, 24]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,8 +58,7 @@ jobs:
         run: pnpm rebuild
 
       - name: Lint
-        # ESLint 10 + eslint-flat-config-utils relies on Object.groupBy,
-        # which only exists on Node 21+. Run lint once on Node 22.
+        # Static check — run once on the lowest supported Node.
         if: matrix.node-version == 22
         run: pnpm lint
 
