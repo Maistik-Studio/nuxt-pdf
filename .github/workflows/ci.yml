@@ -195,38 +195,59 @@ jobs:
       - name: Update changelog
         run: pnpm exec changelogen --release --push=false
 
-      - name: Commit & tag release
+      - name: Configure npm auth
+        run: echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+
+      # Publish to npm FIRST: it is the source of truth and the step most likely
+      # to fail (auth/network). Tagging and pushing only after a successful
+      # publish keeps git and npm in sync and prevents the tag-collision /
+      # version-drift that broke earlier re-runs. An already-published version
+      # is treated as success so re-runs are idempotent.
+      - name: Publish to npm (latest)
+        run: |
+          VER="${{ steps.bump.outputs.version_number }}"
+          if pnpm publish --access public --no-git-checks; then
+            echo "Published @maistik/nuxt-pdf@$VER"
+          elif [ "$(npm view "@maistik/nuxt-pdf@$VER" version 2>/dev/null)" = "$VER" ]; then
+            echo "Version $VER already on npm — treating as success."
+          else
+            echo "::error::npm publish failed for $VER (check NPM_TOKEN validity/permissions)"
+            exit 1
+          fi
+
+      - name: Commit, tag & push release
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "chore(release): v${{ steps.bump.outputs.version_number }} [skip ci]" || echo "No changes"
-          git tag v${{ steps.bump.outputs.version_number }}
+          git commit -m "chore(release): v${{ steps.bump.outputs.version_number }} [skip ci]" || echo "Nothing to commit"
+          if git rev-parse "v${{ steps.bump.outputs.version_number }}" >/dev/null 2>&1; then
+            echo "Tag v${{ steps.bump.outputs.version_number }} already exists — skipping tag creation."
+          else
+            git tag "v${{ steps.bump.outputs.version_number }}"
+          fi
           git push origin main --follow-tags
 
+      # gh release create is idempotent-friendly: skip if the release already
+      # exists (e.g. on a re-run) instead of hard-failing.
       - name: Create GitHub Release
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.bump.outputs.new_version }}
-          release_name: Release ${{ steps.bump.outputs.new_version }}
-          body: |
-            ## Changes
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md).
-            
-            ## Installation
-            ```bash
-            npm install @maistik/nuxt-pdf@${{ steps.bump.outputs.version_number }}
-            ```
-          draft: false
-          prerelease: ${{ contains(steps.bump.outputs.new_version, 'alpha') || contains(steps.bump.outputs.new_version, 'beta') || contains(steps.bump.outputs.new_version, 'rc') }}
+        run: |
+          VER="${{ steps.bump.outputs.version_number }}"
+          if gh release view "v$VER" >/dev/null 2>&1; then
+            echo "Release v$VER already exists — skipping."
+          else
+            gh release create "v$VER" \
+              --title "Release v$VER" \
+              --notes "## Changes
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md).
 
-      - name: Configure npm auth
-        run: echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
-
-      - name: Publish to npm (latest)
-        run: pnpm publish --access public --no-git-checks
+          ## Installation
+          \`\`\`bash
+          npm install @maistik/nuxt-pdf@$VER
+          \`\`\`"
+          fi
 
       - name: Release summary
         run: |
