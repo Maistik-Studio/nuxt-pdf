@@ -58,6 +58,9 @@ jobs:
         run: pnpm rebuild
 
       - name: Lint
+        # ESLint 10 + eslint-flat-config-utils relies on Object.groupBy,
+        # which only exists on Node 21+. Run lint once on Node 22.
+        if: matrix.node-version == 22
         run: pnpm lint
 
       - name: Build
