@@ -22,7 +22,7 @@ export function usePdf() {
 
   const generate = async (
     template: string,
-    data: any,
+    data: Record<string, unknown>,
     options: PdfGenerateOptions = {},
     locale?: string,
   ): Promise<Blob> => {
@@ -44,7 +44,7 @@ export function usePdf() {
 
   const download = async (
     template: string,
-    data: any,
+    data: Record<string, unknown>,
     options: PdfGenerateOptions = {},
     filename: string = 'document.pdf',
     locale?: string,

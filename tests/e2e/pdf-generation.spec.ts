@@ -1,4 +1,29 @@
 import { test, expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
+
+// Server-side PDF rendering spins up a browser per request, so generation time
+// varies a lot. The reliable signal is the `/api/pdf` response itself: we wait
+// for it directly (handling both success and graceful-error paths) instead of
+// observing transient button/loading state, which is racy.
+async function generateAndExpectResult(page: Page) {
+  const responsePromise = page.waitForResponse(
+    response => response.url().includes('/api/pdf'),
+    { timeout: 90_000 },
+  )
+
+  await page.click('button[data-testid="generate-pdf"]')
+
+  const response = await responsePromise
+  // 200 on success, or a handled error status — never a crash.
+  expect([200, 400, 404, 500]).toContain(response.status())
+
+  // The UI should reflect the result (preview on success, error otherwise).
+  await expect(
+    page.locator('iframe[data-testid="pdf-preview"]')
+      .or(page.locator('[data-testid="error-message"]'))
+      .first(),
+  ).toBeVisible({ timeout: 15_000 })
+}
 
 test.describe('PDF Generation', () => {
   test.beforeEach(async ({ page }) => {
@@ -13,27 +38,11 @@ test.describe('PDF Generation', () => {
   })
 
   test('should generate Invoice PDF', async ({ page }) => {
-    // Select Invoice template
     await page.selectOption('select[data-testid="template-select"]', 'Invoice')
-
-    // Select English locale
     await page.selectOption('select[data-testid="locale-select"]', 'en')
-
-    // Select A4 format
     await page.selectOption('select[data-testid="format-select"]', 'A4')
 
-    // Click generate PDF button
-    await page.click('button[data-testid="generate-pdf"]')
-
-    // Wait for generation to complete
-    await expect(page.locator('button[data-testid="generate-pdf"]')).not.toContainText('Generating...')
-
-    // Check if PDF preview appears or error is handled gracefully
-    const hasPreview = await page.locator('iframe[data-testid="pdf-preview"]').isVisible()
-    const hasError = await page.locator('[data-testid="error-message"]').isVisible()
-
-    // Either should have preview or error (since we don't have actual PDF provider running)
-    expect(hasPreview || hasError).toBe(true)
+    await generateAndExpectResult(page)
   })
 
   test('should handle different locales', async ({ page }) => {
@@ -41,15 +50,7 @@ test.describe('PDF Generation', () => {
 
     for (const locale of locales) {
       await page.selectOption('select[data-testid="locale-select"]', locale)
-      await page.click('button[data-testid="generate-pdf"]')
-
-      // Wait for generation to complete
-      await expect(page.locator('button[data-testid="generate-pdf"]')).not.toContainText('Generating...')
-
-      // Should either succeed or fail gracefully
-      const hasPreview = await page.locator('iframe[data-testid="pdf-preview"]').isVisible()
-      const hasError = await page.locator('[data-testid="error-message"]').isVisible()
-      expect(hasPreview || hasError).toBe(true)
+      await generateAndExpectResult(page)
     }
   })
 
@@ -58,15 +59,7 @@ test.describe('PDF Generation', () => {
 
     for (const format of formats) {
       await page.selectOption('select[data-testid="format-select"]', format)
-      await page.click('button[data-testid="generate-pdf"]')
-
-      // Wait for generation to complete
-      await expect(page.locator('button[data-testid="generate-pdf"]')).not.toContainText('Generating...')
-
-      // Should either succeed or fail gracefully
-      const hasPreview = await page.locator('iframe[data-testid="pdf-preview"]').isVisible()
-      const hasError = await page.locator('[data-testid="error-message"]').isVisible()
-      expect(hasPreview || hasError).toBe(true)
+      await generateAndExpectResult(page)
     }
   })
 })

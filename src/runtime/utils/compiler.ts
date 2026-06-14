@@ -3,7 +3,7 @@ import Handlebars from 'handlebars'
 
 export function compilePdfComponent(
   templateName: string,
-  ctx: { data: any, options: any, locale?: string },
+  ctx: { data: Record<string, unknown>, options: Record<string, unknown>, locale?: string },
   messages: Record<string, string>,
   templateSources: Record<string, string>,
   partialSources: Record<string, string>,
@@ -16,11 +16,11 @@ export function compilePdfComponent(
   handlebars.registerHelper('t', function (key: string) {
     // Support nested keys like "invoice.title"
     const keys = key.split('.')
-    let value = messages
+    let value: unknown = messages
 
     for (const k of keys) {
       if (value && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, k)) {
-        value = value[k] as any
+        value = (value as Record<string, unknown>)[k]
       }
       else {
         return key // Return the key if not found
@@ -48,12 +48,12 @@ export function compilePdfComponent(
       // {{formatCurrency amount "EUR"}}
       currency = currencyOrOptions
     }
-    else if (
-      currencyOrOptions
-      && typeof (currencyOrOptions as any).hash?.currency === 'string'
-    ) {
+    else {
       // {{formatCurrency amount currency="GBP"}}
-      currency = (currencyOrOptions as any).hash.currency
+      const hash = (currencyOrOptions as Handlebars.HelperOptions | undefined)?.hash
+      if (typeof hash?.currency === 'string') {
+        currency = hash.currency
+      }
     }
 
     // Ensure it’s a valid ISO code (simple check)
@@ -74,8 +74,8 @@ export function compilePdfComponent(
   })
 
   handlebars.registerHelper('eq', function (
-    a: any,
-    b: any,
+    a: unknown,
+    b: unknown,
     options: Handlebars.HelperOptions,
   ) {
     const isEqual = a === b
@@ -126,11 +126,11 @@ export function compilePdfComponent(
     if (typeof formatOrOptions === 'string') {
       style = formatOrOptions
     }
-    else if (
-      formatOrOptions
-      && typeof (formatOrOptions as any).hash?.format === 'string'
-    ) {
-      style = (formatOrOptions as any).hash.format
+    else {
+      const hash = (formatOrOptions as Handlebars.HelperOptions | undefined)?.hash
+      if (typeof hash?.format === 'string') {
+        style = hash.format
+      }
     }
     if (!['full', 'long', 'medium', 'short'].includes(style)) {
       style = 'short'
@@ -152,7 +152,7 @@ export function compilePdfComponent(
     }
 
     return new Intl.DateTimeFormat(ctx.locale || 'en-US', {
-      dateStyle: style as any,
+      dateStyle: style as 'full' | 'long' | 'medium' | 'short',
     }).format(dateObj)
   })
 
@@ -240,21 +240,36 @@ export function compilePdfComponent(
   })
 }
 
-function enrichContextForTemplate(templateName: string, data: any): any {
-  const enriched = { ...data }
+interface InvoiceItem {
+  quantity: number
+  price: number
+}
+
+interface SalesEntry {
+  date: string | number | Date
+  amount: number
+}
+
+function enrichContextForTemplate(
+  templateName: string,
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  const enriched: Record<string, unknown> = { ...data }
 
   // Invoice-specific enrichments
   if (templateName.toLowerCase().includes('invoice')) {
-    if (enriched.items && Array.isArray(enriched.items)) {
-      enriched.subtotal = enriched.items.reduce((sum: number, item: any) => {
-        return sum + (item.quantity * item.price)
-      }, 0)
+    if (Array.isArray(enriched.items)) {
+      const items = enriched.items as InvoiceItem[]
+      const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.price), 0)
+      const taxRate = typeof enriched.taxRate === 'number' ? enriched.taxRate : 0.1
+      const tax = subtotal * taxRate
 
-      enriched.tax = enriched.subtotal * (enriched.taxRate || 0.1)
-      enriched.total = enriched.subtotal + enriched.tax
+      enriched.subtotal = subtotal
+      enriched.tax = tax
+      enriched.total = subtotal + tax
 
-      if (enriched.issueDate && enriched.paymentTerms) {
-        const issueDate = new Date(enriched.issueDate)
+      if (enriched.issueDate && typeof enriched.paymentTerms === 'number') {
+        const issueDate = new Date(enriched.issueDate as string | number | Date)
         const dueDate = new Date(issueDate)
         dueDate.setDate(dueDate.getDate() + enriched.paymentTerms)
         enriched.dueDate = dueDate
@@ -264,12 +279,14 @@ function enrichContextForTemplate(templateName: string, data: any): any {
 
   // Sales report-specific enrichments
   if (templateName.toLowerCase().includes('salesreport')) {
-    if (enriched.salesData && Array.isArray(enriched.salesData)) {
+    if (Array.isArray(enriched.salesData)) {
+      const salesData = enriched.salesData as SalesEntry[]
+
       // Calculate quarterly breakdown
-      enriched.quarters = calculateQuarters(enriched.salesData)
+      enriched.quarters = calculateQuarters(salesData)
 
       // Calculate performance rating
-      const totalSales = enriched.salesData.reduce((sum: number, item: any) => sum + item.amount, 0)
+      const totalSales = salesData.reduce((sum, item) => sum + item.amount, 0)
       enriched.rating = calculatePerformanceRating(totalSales)
     }
   }
@@ -277,7 +294,13 @@ function enrichContextForTemplate(templateName: string, data: any): any {
   return enriched
 }
 
-function calculateQuarters(salesData: any[]): any[] {
+interface Quarter {
+  name: string
+  months: number[]
+  total: number
+}
+
+function calculateQuarters(salesData: SalesEntry[]): Quarter[] {
   const quarters = [
     { name: 'Q1', months: [0, 1, 2], total: 0 },
     { name: 'Q2', months: [3, 4, 5], total: 0 },

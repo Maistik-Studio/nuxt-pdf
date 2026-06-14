@@ -24,7 +24,7 @@ describe('PDF Providers', () => {
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(1000)),
       }
 
-      vi.mocked(fetch).mockResolvedValueOnce(mockResponse as any)
+      vi.mocked(fetch).mockResolvedValueOnce(mockResponse as unknown as Response)
 
       const provider = createPdfProvider('gotenberg', {
         gotenberg: { url: 'http://localhost:3000' },
@@ -51,7 +51,7 @@ describe('PDF Providers', () => {
         statusText: 'Internal Server Error',
       }
 
-      vi.mocked(fetch).mockResolvedValueOnce(mockResponse as any)
+      vi.mocked(fetch).mockResolvedValueOnce(mockResponse as unknown as Response)
 
       const provider = createPdfProvider('gotenberg', {
         gotenberg: { url: 'http://localhost:3000' },
@@ -83,7 +83,7 @@ describe('PDF Providers', () => {
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(1000)),
       }
 
-      vi.mocked(fetch).mockResolvedValueOnce(mockResponse as any)
+      vi.mocked(fetch).mockResolvedValueOnce(mockResponse as unknown as Response)
 
       const provider = createPdfProvider('browserless', {
         browserless: {

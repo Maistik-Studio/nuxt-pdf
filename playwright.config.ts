@@ -12,6 +12,10 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
+  // Server-side PDF rendering (Puppeteer/Gotenberg/Browserless) is slow, and
+  // some tests perform several sequential generations, so give them headroom.
+  timeout: 180_000,
+  expect: { timeout: 15_000 },
   use: {
     channel: 'chrome',
     headless: true,
@@ -29,5 +33,6 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     cwd: './playground',
+    timeout: 120_000,
   },
 })

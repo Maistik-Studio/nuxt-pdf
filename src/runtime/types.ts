@@ -1,5 +1,5 @@
 export interface PdfContext {
-  data: any
+  data: Record<string, unknown>
   options: PdfOptions
   locale?: string
 }
@@ -30,10 +30,10 @@ export interface PdfProviderConfig {
     apiKey: string
   }
   puppeteer: {
-    launchOptions: Record<string, any>
+    launchOptions: Record<string, unknown>
   }
 }
 
 export interface PdfProvider {
-  generatePdf(html: string, options: any): Promise<Buffer>
+  generatePdf(html: string, options: PdfOptions): Promise<Buffer>
 }

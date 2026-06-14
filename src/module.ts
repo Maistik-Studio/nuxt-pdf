@@ -20,7 +20,7 @@ export interface PdfModuleOptions {
       apiKey: string
     }
     puppeteer: {
-      launchOptions: Record<string, any>
+      launchOptions: Record<string, unknown>
     }
   }
   defaultOptions: {

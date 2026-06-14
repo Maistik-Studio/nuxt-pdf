@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const { data, options = {}, locale } = ctx as {
-    data: unknown
+    data: Record<string, unknown>
     options?: Record<string, unknown>
     locale?: string
   }
@@ -74,6 +74,7 @@ export default defineEventHandler(async (event) => {
   catch (error) {
     // Log the full error server-side for debugging, but never leak internal
     // details (stack traces, provider URLs, etc.) to the client.
+    // eslint-disable-next-line no-console -- intentional server-side error log
     console.error('PDF generation error:', error)
 
     // Re-throw HTTP errors we created intentionally.

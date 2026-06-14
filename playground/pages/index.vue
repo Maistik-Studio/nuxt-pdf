@@ -288,6 +288,7 @@ const generatePdf = async () => {
   }
   catch (err) {
     error.value = err.message || 'Failed to generate PDF'
+    // eslint-disable-next-line no-console -- demo error logging
     console.error('PDF generation error:', err)
   }
   finally {
@@ -312,6 +313,7 @@ const downloadPdf = async () => {
   }
   catch (err) {
     error.value = err.message || 'Failed to download PDF'
+    // eslint-disable-next-line no-console -- demo error logging
     console.error('PDF download error:', err)
   }
   finally {

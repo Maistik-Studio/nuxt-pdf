@@ -1,5 +1,5 @@
 import FormData from 'form-data'
-import type { PdfProvider, PdfProviderConfig } from '../types'
+import type { PdfProvider, PdfProviderConfig, PdfOptions } from '../types'
 
 export function createPdfProvider(
   providerType: string,
@@ -20,7 +20,7 @@ export function createPdfProvider(
 class GotenbergProvider implements PdfProvider {
   constructor(private config: { url: string }) {}
 
-  async generatePdf(html: string, options: any): Promise<Buffer> {
+  async generatePdf(html: string, options: PdfOptions): Promise<Buffer> {
     const form = new FormData()
 
     // Add the HTML file
@@ -39,10 +39,11 @@ class GotenbergProvider implements PdfProvider {
     }
 
     if (options.margin) {
-      form.append('marginTop', (options.margin.top / 25.4).toString()) // Convert mm to inches
-      form.append('marginBottom', (options.margin.bottom / 25.4).toString())
-      form.append('marginLeft', (options.margin.left / 25.4).toString())
-      form.append('marginRight', (options.margin.right / 25.4).toString())
+      // Convert mm to inches
+      form.append('marginTop', ((options.margin.top ?? 0) / 25.4).toString())
+      form.append('marginBottom', ((options.margin.bottom ?? 0) / 25.4).toString())
+      form.append('marginLeft', ((options.margin.left ?? 0) / 25.4).toString())
+      form.append('marginRight', ((options.margin.right ?? 0) / 25.4).toString())
     }
 
     if (options.landscape) {
@@ -57,7 +58,7 @@ class GotenbergProvider implements PdfProvider {
     form.append('waitForNetworkIdle', 'true')
     form.append('waitDelay', '1s')
 
-    const bodyBuffer = (form as any).getBuffer() as Buffer
+    const bodyBuffer = form.getBuffer()
     const headers: Record<string, string> = {
       ...form.getHeaders(), // multipart/form-data; boundary=XXX
       'Content-Length': bodyBuffer.length.toString(),
@@ -89,7 +90,7 @@ class GotenbergProvider implements PdfProvider {
 class BrowserlessProvider implements PdfProvider {
   constructor(private config: { url: string, apiKey: string }) {}
 
-  async generatePdf(html: string, options: any): Promise<Buffer> {
+  async generatePdf(html: string, options: PdfOptions): Promise<Buffer> {
     const response = await fetch(`${this.config.url}/pdf?token=${this.config.apiKey}`, {
       method: 'POST',
       headers: {
@@ -115,26 +116,28 @@ class BrowserlessProvider implements PdfProvider {
 }
 
 class PuppeteerProvider implements PdfProvider {
-  constructor(private config: { launchOptions: any }) {}
+  constructor(private config: { launchOptions: Record<string, unknown> }) {}
 
-  async generatePdf(html: string, options: any): Promise<Buffer> {
+  async generatePdf(html: string, options: PdfOptions): Promise<Buffer> {
     // Dynamic import to avoid bundling puppeteer in environments where it's not needed
     const puppeteer = await import('puppeteer').then(m => m.default)
 
-    const browser = await puppeteer.launch(this.config.launchOptions)
+    const browser = await puppeteer.launch(
+      this.config.launchOptions as Parameters<typeof puppeteer.launch>[0],
+    )
 
     try {
       const page = await browser.newPage()
       await page.setContent(html, { waitUntil: 'networkidle0' })
 
-      const pdfOptions: any = {
+      const pdfOptions = {
         format: options.format || 'A4',
         margin: options.margin,
         landscape: options.landscape || false,
         printBackground: options.printBackground !== false,
       }
 
-      const pdfBuffer = await page.pdf(pdfOptions)
+      const pdfBuffer = await page.pdf(pdfOptions as Parameters<typeof page.pdf>[0])
       return Buffer.from(pdfBuffer)
     }
     finally {
