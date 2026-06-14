@@ -116,32 +116,73 @@ class BrowserlessProvider implements PdfProvider {
 }
 
 class PuppeteerProvider implements PdfProvider {
+  // Launching a full Chromium per request is slow and flaky (especially on CI),
+  // so we keep one browser alive and reuse it, relaunching if it disconnects.
+  private static browser: import('puppeteer').Browser | null = null
+  private static launching: Promise<import('puppeteer').Browser> | null = null
+
   constructor(private config: { launchOptions: Record<string, unknown> }) {}
 
-  async generatePdf(html: string, options: PdfOptions): Promise<Buffer> {
-    // Dynamic import to avoid bundling puppeteer in environments where it's not needed
-    const puppeteer = await import('puppeteer').then(m => m.default)
+  private async getBrowser(): Promise<import('puppeteer').Browser> {
+    const existing = PuppeteerProvider.browser
+    if (existing?.connected) {
+      return existing
+    }
 
-    const browser = await puppeteer.launch(
-      this.config.launchOptions as Parameters<typeof puppeteer.launch>[0],
-    )
+    // De-duplicate concurrent launches.
+    if (!PuppeteerProvider.launching) {
+      PuppeteerProvider.launching = (async () => {
+        const puppeteer = await import('puppeteer').then(m => m.default)
+        const launchOptions = this.config.launchOptions as Parameters<typeof puppeteer.launch>[0]
+        const browser = await puppeteer.launch({
+          // `--disable-dev-shm-usage` avoids Chromium exhausting the small
+          // /dev/shm tmpfs in CI/Docker, a common cause of hangs and crashes.
+          ...launchOptions,
+          args: ['--disable-dev-shm-usage', ...(launchOptions?.args ?? [])],
+        })
+        PuppeteerProvider.browser = browser
+        browser.on('disconnected', () => {
+          PuppeteerProvider.browser = null
+        })
+        return browser
+      })()
+
+      try {
+        await PuppeteerProvider.launching
+      }
+      finally {
+        PuppeteerProvider.launching = null
+      }
+    }
+    else {
+      await PuppeteerProvider.launching
+    }
+
+    return PuppeteerProvider.browser!
+  }
+
+  async generatePdf(html: string, options: PdfOptions): Promise<Buffer> {
+    const browser = await this.getBrowser()
+    const page = await browser.newPage()
 
     try {
-      const page = await browser.newPage()
-      await page.setContent(html, { waitUntil: 'networkidle0' })
+      // `domcontentloaded` + a bounded timeout keeps a missing external asset
+      // from blocking generation indefinitely; templates are self-contained.
+      await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30_000 })
 
       const pdfOptions = {
         format: options.format || 'A4',
         margin: options.margin,
         landscape: options.landscape || false,
         printBackground: options.printBackground !== false,
+        timeout: 30_000,
       }
 
       const pdfBuffer = await page.pdf(pdfOptions as Parameters<typeof page.pdf>[0])
       return Buffer.from(pdfBuffer)
     }
     finally {
-      await browser.close()
+      await page.close().catch(() => {})
     }
   }
 }

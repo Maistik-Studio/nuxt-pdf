@@ -29,10 +29,14 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    // Test against a production build, not the dev server: Nitro lazily
+    // compiles routes on first request in dev, so the first /api/pdf hit can
+    // take tens of seconds and time out. A prebuilt server responds promptly
+    // and deterministically.
+    command: 'npm run build && npm run preview',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     cwd: './playground',
-    timeout: 120_000,
+    timeout: 180_000,
   },
 })
