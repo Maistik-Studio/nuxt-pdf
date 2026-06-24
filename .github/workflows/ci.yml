@@ -40,7 +40,7 @@ jobs:
           version: 9.15.3
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
@@ -101,7 +101,7 @@ jobs:
 
       - name: Setup Node.js 22
         # Node 22+ ensures oxc-parser native binding is available
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -148,7 +148,7 @@ jobs:
           version: 9.15.3
 
       - name: Setup Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
